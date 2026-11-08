@@ -58,7 +58,9 @@ final class ChatService {
         d.onPeer = { [weak self] id, name, ip, port in
             self?.peerSeen(id: id, name: name, ip: ip, port: port)
         }
-        d.start { [weak self] in self?.beaconData() }
+        d.start { [weak self] () -> Data in
+            self?.beaconData() ?? Data()
+        }
         discovery = d
     }
 
