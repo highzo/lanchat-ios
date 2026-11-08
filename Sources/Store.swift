@@ -146,7 +146,7 @@ final class Store {
             case .text(let v):
                 sqlite3_bind_text(stmt, i, v, -1, Self.transient)
             case .blob(let v):
-                sqlite3_bind_blob(stmt, i, v, Int32(v.count), Self.transient)
+                sqlite3_bind_blob(stmt, i, (v as NSData).bytes, Int32(v.count), Self.transient)
             }
         }
     }
@@ -211,7 +211,7 @@ final class Store {
     /// 群聊信息更新（重名时不覆盖已有名称）
     func upsertGroupConv(id: String, name: String, members: [String]) {
         run("INSERT OR IGNORE INTO convs(id,type,name,members,created) VALUES(?,?,?,?,?)",
-            [.text(id), .text("group"), .text(name), .text(Self.jsonString(members)), Date().timeIntervalSince1970])
+            [.text(id), .text("group"), .text(name), .text(Self.jsonString(members)), .double(Date().timeIntervalSince1970)])
         run("UPDATE convs SET members=? WHERE id=?", [.text(Self.jsonString(members)), .text(id)])
     }
 
@@ -281,8 +281,8 @@ final class Store {
         run("INSERT OR IGNORE INTO msgs(id,conv_id,sender_id,sender_name,kind,text,"
             + "file_id,file_name,size,ts,dir,read) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
             [.text(mid), .text(convID), .text(senderID), .text(senderName), .text(kind),
-             .text(text), .text(fileID), .text(fileName), .int64(Int64(size)),
-             .double(Date().timeIntervalSince1970), .text(direction), .int64(0)])
+             .text(text), .text(fileID), .text(fileName), .int(Int64(size)),
+             .double(Date().timeIntervalSince1970), .text(direction), .int(0)])
         return mid
     }
 
@@ -313,7 +313,7 @@ final class Store {
 
     func insertFile(id: String, name: String, size: Int, path: String) {
         run("INSERT OR REPLACE INTO files(id,name,size,path,ts) VALUES(?,?,?,?,?)",
-            [.text(id), .text(name), .int64(Int64(size)), .text(path),
+            [.text(id), .text(name), .int(Int64(size)), .text(path),
              .double(Date().timeIntervalSince1970)])
     }
 
@@ -330,7 +330,7 @@ final class Store {
     }
 
     func filePath(forID fid: String, name: String) -> String {
-        let safe = sanitizeFileName(name)
+        let safe = Self.sanitizeFileName(name)
         return filesDir.appendingPathComponent(fid + "_" + safe).path
     }
 
