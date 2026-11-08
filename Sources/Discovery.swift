@@ -36,10 +36,10 @@ final class Discovery {
         }
 
         // 广播自己
-        sendConn = NWConnection(host: "255.255.255.255",
+        sendConn = NWConnection(host: NWEndpoint.Host("255.255.255.255"),
                                 port: NWEndpoint.Port(rawValue: Self.port)!,
                                 using: .udp)
-        sendConn?.stateUpdateHandler = { state in
+        sendConn?.stateUpdateHandler = { (state: NWConnection.State) in
             if case .ready = state {
                 NSLog("[LANChat] UDP 广播通道就绪")
             }
@@ -69,7 +69,7 @@ final class Discovery {
             targets.append(String(ip[..<lastDot]) + ".255")
         }
         for host in Set(targets) {
-            let conn = NWConnection(host: host, port: NWEndpoint.Port(rawValue: Self.port)!, using: .udp)
+            let conn = NWConnection(host: NWEndpoint.Host(host), port: NWEndpoint.Port(rawValue: Self.port)!, using: .udp)
             conn.stateUpdateHandler = { state in
                 if case .ready = state {
                     conn.send(content: data, completion: .contentProcessed { _ in
@@ -107,10 +107,12 @@ final class Discovery {
         var ip = ""
         if case let .hostPort(host, _) = conn.endpoint {
             switch host {
-            case .ipv4(let v4): ip = "\(v4.address)"
-            case .ipv6(let v6): ip = "\(v6.address)"
-            case .name(let n, _): ip = n
-            @unknown default: break
+            case .ipv4, .ipv6:
+                ip = "\(host)"          // CustomStringConvertible，输出点分地址
+            case .name(let n, _):
+                ip = n
+            @unknown default:
+                break
             }
         }
         guard !ip.isEmpty else { return }
