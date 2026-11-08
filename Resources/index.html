@@ -1007,9 +1007,10 @@ setInterval(tick, 2000);
   if(!IS_APP) { await loadSystem(); }
   else { state.sys = {}; }
   renderSettings();
-  // 默认进入总群
-  const all = state.convs.find(c=>c.id==='all');
-  if(all) openConv('all');
+  // 默认进入总群（若总群被设为免打扰，就进第一个能看的会话）
+  const visible = state.convs.filter(c=> !isMutedConv(c));
+  const first = visible.find(c=>c.id==='all') || visible[0];
+  if(first) openConv(first.id);
 })();
 </script>
 </body>
