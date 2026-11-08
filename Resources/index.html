@@ -34,6 +34,12 @@
   .iconbtn{border:none;background:#f7f7f7;width:30px;height:30px;border-radius:6px;cursor:pointer;font-size:17px;color:#555;line-height:1}
   .iconbtn:hover{background:#dedede}
   #convList{flex:1;overflow-y:auto}
+  .sidefoot{display:flex;align-items:center;gap:9px;padding:12px 15px;border-top:1px solid var(--line);
+    background:#e4e4e4;cursor:pointer;font-size:13.5px;color:#333;flex-shrink:0}
+  .sidefoot:hover{background:#dcdcdc}
+  .sidefoot .gear{width:18px;height:18px;color:#555}
+  .sidefoot .cnt{font-size:11.5px;color:#0a0}
+  .sidefoot .chev2{margin-left:auto;color:#aaa}
   .sec-title{padding:10px 14px 5px;font-size:11.5px;color:var(--muted)}
   .conv{display:flex;gap:10px;padding:11px 14px;cursor:pointer;align-items:center;border-bottom:1px solid #e0e0e0}
   .conv:hover{background:#e2e2e2}
@@ -101,6 +107,7 @@
   .gtitle{padding:12px 14px 4px;font-size:12px;color:var(--muted)}
   .gsub{padding:0 14px 8px;font-size:11.5px;color:#b0b0b0;line-height:1.6}
   .cell{display:flex;align-items:center;gap:10px;padding:13px 14px;border-top:1px solid #f2f2f2;font-size:14px;cursor:pointer}
+  .cell .mini{pointer-events:none}
   .cell:first-child{border-top:none}
   .cell .grow{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .cell .v{color:var(--muted);font-size:12.5px;max-width:46%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -165,6 +172,7 @@
     #app{display:block;position:relative}
     #sidebar{width:100%;height:100vh;height:100dvh;border-right:none}
     #convList{padding-bottom:66px}
+    .sidefoot{display:none}
     #chat{display:none;position:fixed;left:0;right:0;top:0;bottom:calc(54px + env(safe-area-inset-bottom,0px));z-index:20}
     body.chat-open #chat{display:flex}
     body.view-me #chat{display:none}
@@ -219,6 +227,15 @@ input,textarea{-webkit-user-select:text;user-select:text}
       <button class="iconbtn" id="btnGroup" title="新建群聊">＋</button>
     </div>
     <div id="convList"></div>
+    <div class="sidefoot" id="btnSettings" title="设置：防火墙、开机自启、免打扰">
+      <svg class="gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="3.2"/>
+        <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 8.9 19a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>
+      </svg>
+      <span>设置</span>
+      <span class="cnt" id="onlineCnt"></span>
+      <span class="chev2">›</span>
+    </div>
   </aside>
 
   <section id="chat">
@@ -355,6 +372,7 @@ const state = {
 };
 const IS_APP = !!(window.LanChatNative || (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.lanchat));
 const IS_TOUCH = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+const IS_ANDROID = /Android/i.test(navigator.userAgent || '');
 
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function toast(msg, ms){ const t=$('#toast'); t.textContent=msg; t.style.display='block';
@@ -521,6 +539,9 @@ function renderConvs(){
     html += '<div class="sec-title" style="padding:24px 14px;line-height:1.9">还没有其他设备在线<br>请让其他电脑/手机打开本程序</div>';
   }
   box.innerHTML = html;
+
+  const cnt = $('#onlineCnt');
+  if(cnt) cnt.textContent = state.peers.length ? ('· ' + state.peers.length + ' 台在线') : '';
 
   const badge = $('#tabBadge');
   if(badge){
@@ -793,19 +814,22 @@ function renderSettings(){
   /* ---- 系统与权限 ---- */
   let h = '';
   if(IS_APP){
-    h += cellHtml('通知权限', '<button class="mini" data-act="notif">去开启</button>');
-    h += cellHtml('后台运行 / 电池不限制', '<button class="mini" data-act="battery">去开启</button>', '熄屏后仍能收到消息');
-    h += cellHtml('开机自启动（部分手机需手动开启）', '<button class="mini" data-act="autostart">去设置</button>', '手机厂商的自启动管理里允许本应用');
+    h += cellHtml('通知权限', '<button class="mini">去开启</button>', '点这一行跳到系统通知设置', 'notif');
+    h += cellHtml('后台运行 / 电池不限制', '<button class="mini">去开启</button>', '熄屏后仍能收到消息', 'battery');
+    h += cellHtml('开机自启动（部分手机需手动开启）', '<button class="mini">去设置</button>', '手机厂商的自启动管理里允许本应用', 'autostart');
+    h += cellHtml('应用信息 / 权限', '<button class="mini gray">打开</button>', '通知、权限、自启动都在这里', 'app');
     h += cellHtml('本机地址', `<span class="v">${esc((state.sys&&state.sys.ip)||'')}</span>`);
   }else{
     const s = state.sys || {};
     if(s.is_windows){
-      h += cellHtml('Windows 防火墙放行', `<span class="v">${s.firewall?'已放行':'未放行'}</span><button class="mini" data-act="fw">${s.firewall?'重新放行':'一键放行'}</button>`, '不点会一直显示「对方不在线」，需要管理员权限');
+      h += cellHtml('Windows 防火墙放行', `<span class="v">${s.firewall?'已放行':'未放行'}</span><button class="mini">${s.firewall?'重新放行':'一键放行'}</button>`, '不点会一直显示「对方不在线」，会弹一次管理员确认', 'fw');
       h += cellHtml('开机自启动（电脑）', switchHtml('autostart', s.autostart===true), '登录 Windows 后自动打开聊天');
     }
+    h += cellHtml('扫描局域网设备', '<button class="mini">扫描</button>',
+                  '对方明明在线却看不到时，点一下重新找一遍', 'scan');
     h += cellHtml('复制本机访问地址', `<span class="v">${esc((s.ip||'')+':'+(s.port||''))}</span><span class="chev">›</span>`, '', 'copyaddr');
     h += cellHtml('打开数据目录', '<span class="chev">›</span>', '聊天数据库和收到的文件都在这里', 'opendata');
-    h += cellHtml('重新检查防火墙状态', '<button class="mini gray" data-act="fwcheck">检查</button>');
+    h += cellHtml('重新检查防火墙状态', '<button class="mini gray">检查</button>', '', 'fwcheck');
   }
   $('#sysList').innerHTML = h;
   $('#sysList').querySelectorAll('[data-act]').forEach(el=>{
@@ -858,10 +882,43 @@ async function loadSystem(){
   try{ state.sys = await api('/api/system'); }catch(e){ state.sys = {}; }
 }
 
+function nativeSetting(kind){
+  const cmd = {notif:'openNotificationSettings', battery:'openBatterySettings',
+               autostart:'openAutoStartSettings', app:'openSettings'}[kind] || 'openSettings';
+  // 1) 原生桥
+  if(window.LanChatNative && typeof window.LanChatNative[cmd] === 'function'){
+    let ok = true;
+    try{ ok = window.LanChatNative[cmd](''); }catch(e){ ok = false; }
+    if(ok !== false) return true;
+  }
+  // 2) 安卓兜底：自定义协议，由 WebView 拦截后交给原生处理
+  if(IS_ANDROID){
+    try{ location.href = 'lanchat://setting/' + kind; return true; }catch(e){}
+  }
+  // 3) iOS
+  if(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.lanchat){
+    window.webkit.messageHandlers.lanchat.postMessage({cmd: cmd, arg: ''});
+    return true;
+  }
+  return false;
+}
+
 async function doSysAct(act){
-  if(act === 'notif'){ nativeCall('openNotificationSettings'); toast('已打开通知设置'); return; }
-  if(act === 'battery'){ nativeCall('openBatterySettings'); toast('请选择「不限制 / 允许后台运行」'); return; }
-  if(act === 'autostart'){ nativeCall('openAutoStartSettings'); toast('请在列表中允许本应用自启动'); return; }
+  if(act === 'notif' || act === 'battery' || act === 'autostart' || act === 'app'){
+    if(!nativeSetting(act)) toast('请在系统设置里手动找到本应用开启');
+    return;
+  }
+
+  if(act === 'scan'){
+    toast('正在扫描局域网，请稍候…', 9000);
+    try{
+      const r = await fetch('/api/system/scan', {method:'POST', headers:{'Content-Type':'application/json'},
+        body:'{}'}).then(x=>x.json());
+      await loadState(); renderConvs(); renderSettings();
+      toast(r.online ? ('找到 ' + r.online + ' 台在线设备') : '没找到设备：确认在同一个 WiFi，且对方程序也开着', 4000);
+    }catch(e){ toast('扫描失败'); }
+    return;
+  }
 
   if(act === 'fw' || act === 'fwcheck'){
     if(act === 'fw'){ toast('正在放行防火墙，请稍候…', 6000); }
@@ -922,6 +979,7 @@ $('#btnFile').onclick = ()=> $('#filePicker').click();
 $('#filePicker').onchange = e => { sendFiles([...e.target.files]); e.target.value=''; };
 $('#btnBack').onclick = ()=>{ document.body.classList.remove('chat-open'); state.cur=null; renderConvs(); };
 $('#meBlock').onclick = ()=> switchTab('me');
+$('#btnSettings').onclick = ()=> switchTab('me');
 $('#meBack').onclick = ()=> switchTab('chat');
 $('#meCard').onclick = ()=>{
   $('#nameInput').value = (state.me && state.me.name) || '';
