@@ -135,10 +135,11 @@ func localIPAddress() -> String? {
             var sin = sockaddr_in()
             memcpy(&sin, sa, MemoryLayout<sockaddr_in>.size)
             let name = String(cString: ifa.ifa_name)
+            let sinLen = sin.sin_len
             var host = [CChar](repeating: 0, count: Int(NI_MAXHOST))
             let ok = withUnsafePointer(to: &sin) { ptr in
                 ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { saptr in
-                    getnameinfo(saptr, socklen_t(sin.sin_len), &host,
+                    getnameinfo(saptr, socklen_t(sinLen), &host,
                                 socklen_t(host.count), nil, 0, NI_NUMERICHOST)
                 }
             }
