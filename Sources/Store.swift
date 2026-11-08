@@ -300,6 +300,7 @@ final class Store {
                 "size": Int(r["size"]?.int64Value ?? 0),
                 "ts": r["ts"]?.doubleValue ?? 0,
                 "dir": r["dir"]?.stringValue ?? "in",
+                "sender_id": sid,
                 "sender_name": labelFor(sid, sname),
             ]
         }

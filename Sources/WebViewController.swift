@@ -3,7 +3,7 @@ import WebKit
 
 /// 全屏 WKWebView，加载本机 8090 端口的聊天界面；
 /// 点击文件/图片下载链接时弹出系统分享面板（可存到"文件"、微信等）。
-final class WebViewController: UIViewController, WKNavigationDelegate {
+final class WebViewController: UIViewController, WKNavigationDelegate, WKScriptMessageHandler {
 
     private var webView: WKWebView!
     /// 上次下载到的临时文件（分享面板引用期间保持）
@@ -12,10 +12,30 @@ final class WebViewController: UIViewController, WKNavigationDelegate {
     override func loadView() {
         let config = WKWebViewConfiguration()
         config.allowsInlineMediaPlayback = true
+        // 网页「我的 → 设置」里的权限按钮，通过这个桥跳到系统设置页
+        config.userContentController.add(self, name: "lanchat")
         webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = self
         webView.scrollView.bounces = false
         view = webView
+    }
+
+    // MARK: - 网页 → 原生
+
+    func userContentController(_ userContentController: WKUserContentController,
+                               didReceive message: WKScriptMessage) {
+        guard message.name == "lanchat",
+              let body = message.body as? [String: Any],
+              let cmd = body["cmd"] as? String else { return }
+        switch cmd {
+        case "openNotificationSettings", "openBatterySettings",
+             "openAutoStartSettings", "openSettings":
+            if let url = URL(string: UIApplication.openSettingsURLString) {
+                UIApplication.shared.open(url, options: [:], completionHandler: nil)
+            }
+        default:
+            break
+        }
     }
 
     override func viewDidLoad() {
